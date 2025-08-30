@@ -41,6 +41,12 @@ class AppTheme {
         fontWeight: FontWeight.w700,
       ),
     ),
+
+    /// Floating action member ========>
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primaryColor,
+      foregroundColor: AppColors.white,
+    ),
     textTheme: const TextTheme(
       headlineMedium: TextStyle(
         color: AppColors.primaryColor,

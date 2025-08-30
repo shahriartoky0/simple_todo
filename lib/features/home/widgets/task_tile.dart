@@ -17,6 +17,7 @@ class TaskTile extends StatelessWidget {
   final String taskTime;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final Function(TaskStatus) onStatusChanged;
 
   const TaskTile({
     super.key,
@@ -26,6 +27,7 @@ class TaskTile extends StatelessWidget {
     required this.taskTime,
     required this.onEdit,
     required this.onDelete,
+    required this.onStatusChanged,
   });
 
   @override
@@ -84,7 +86,6 @@ class TaskTile extends StatelessWidget {
                       ),
                       child: PopupMenuButton<String>(
                         onSelected: (String value) {
-                          // Handle menu selection
                           switch (value) {
                             case 'edit':
                               onEdit();
@@ -128,7 +129,7 @@ class TaskTile extends StatelessWidget {
                               ),
                             ],
                         icon: const Icon(Icons.more_vert, color: AppColors.grey).centered,
-                        offset: Offset.zero, // Positions menu below the button
+                        offset: const Offset(0, -40),
                       ),
                     ),
                   ],
@@ -146,31 +147,82 @@ class TaskTile extends StatelessWidget {
                         Text(taskTime, style: context.txtTheme.bodySmall),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSizes.md,
-                        vertical: AppSizes.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors:
-                              taskStatus == TaskStatus.completed
-                                  ? <Color>[AppColors.green, AppColors.green.withValues(alpha: 0.8)]
-                                  : taskStatus == TaskStatus.ready
-                                  ? <Color>[
-                                    AppColors.primaryColor,
-                                    AppColors.primaryColor.withValues(alpha: 0.8),
-                                  ]
-                                  : <Color>[
-                                    AppColors.orange,
-                                    AppColors.orange.withValues(alpha: 0.8),
-                                  ],
+
+                    /// =============> Status widget ==============>
+                    PopupMenuButton<TaskStatus>(
+                      onSelected: (TaskStatus newStatus) {
+                        onStatusChanged(newStatus);
+                      },
+                      itemBuilder:
+                          (BuildContext context) => <PopupMenuEntry<TaskStatus>>[
+                            PopupMenuItem<TaskStatus>(
+                              value: TaskStatus.ready,
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    _getStatusIcon(TaskStatus.ready),
+                                    color: _getStatusColor(TaskStatus.ready),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: AppSizes.sm),
+                                  Text(AppStrings.ready.tr, style: context.txtTheme.titleSmall),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<TaskStatus>(
+                              value: TaskStatus.pending,
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    _getStatusIcon(TaskStatus.pending),
+                                    color: _getStatusColor(TaskStatus.pending),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: AppSizes.sm),
+                                  Text(AppStrings.pending.tr, style: context.txtTheme.titleSmall),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<TaskStatus>(
+                              value: TaskStatus.completed,
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    _getStatusIcon(TaskStatus.completed),
+                                    color: _getStatusColor(TaskStatus.completed),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: AppSizes.sm),
+                                  Text(AppStrings.completed.tr, style: context.txtTheme.titleSmall),
+                                ],
+                              ),
+                            ),
+                          ],
+                      offset: const Offset(0, -40),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.md,
+                          vertical: AppSizes.sm,
                         ),
-                        borderRadius: BorderRadius.circular(AppSizes.borderRadiusXl),
-                      ),
-                      child: Text(
-                        taskStatus.name.toCapitalize,
-                        style: context.txtTheme.labelMedium,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: _getStatusGradient(taskStatus)),
+                          borderRadius: BorderRadius.circular(AppSizes.borderRadiusXl),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(_getStatusIcon(taskStatus), size: 14, color: AppColors.white),
+                            const SizedBox(width: AppSizes.xs),
+                            Text(
+                              taskStatus.name.toCapitalize,
+                              style: context.txtTheme.labelMedium?.copyWith(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.xs),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -181,5 +233,41 @@ class TaskTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Get status gradient colors
+  List<Color> _getStatusGradient(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.completed:
+        return <Color>[AppColors.green, AppColors.green.withValues(alpha: 0.8)];
+      case TaskStatus.ready:
+        return <Color>[AppColors.primaryColor, AppColors.primaryColor.withValues(alpha: 0.8)];
+      case TaskStatus.pending:
+        return <Color>[AppColors.orange, AppColors.orange.withValues(alpha: 0.8)];
+    }
+  }
+
+  // Get status primary color
+  Color _getStatusColor(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.completed:
+        return AppColors.green;
+      case TaskStatus.ready:
+        return AppColors.primaryColor;
+      case TaskStatus.pending:
+        return AppColors.orange;
+    }
+  }
+
+  // Get status icon
+  IconData _getStatusIcon(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.completed:
+        return Icons.check_circle_rounded;
+      case TaskStatus.ready:
+        return Icons.schedule_rounded;
+      case TaskStatus.pending:
+        return Icons.hourglass_empty_rounded;
+    }
   }
 }

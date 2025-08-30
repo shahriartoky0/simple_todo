@@ -1,9 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:simple_todo/core/common/widgets/custom_appbar.dart';
 import 'package:simple_todo/core/config/app_strings.dart';
 import 'package:simple_todo/core/data/local/collection/task.dart';
-import 'package:simple_todo/core/design/app_colors.dart';
+import 'package:simple_todo/core/utils/logger_utils.dart';
 import '../../../core/config/app_sizes.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/task_tile.dart';
@@ -24,12 +25,15 @@ class HomeScreen extends GetView<HomeController> {
               physics: const NeverScrollableScrollPhysics(),
               itemBuilder: (BuildContext context, int index) {
                 return TaskTile(
-                  taskStatus: TaskStatus.pending,
+                  taskStatus: TaskStatus.ready,
                   taskTitle: 'Task Title',
                   taskDescription: 'Task is to make the app',
                   taskTime: 'By 2 days ....',
                   onEdit: () {},
                   onDelete: () {},
+                  onStatusChanged: (TaskStatus taskStatus) {
+                    LoggerUtils.debug(taskStatus.name);
+                  },
                 );
               },
               separatorBuilder: (_, _) {
@@ -39,6 +43,14 @@ class HomeScreen extends GetView<HomeController> {
             ),
           ],
         ),
+      ),
+
+      /// ==============> Add Task Button ===================>
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {},
+        label: Text("Add Task"),
+        icon: const Icon(CupertinoIcons.doc_plaintext),
       ),
     );
   }

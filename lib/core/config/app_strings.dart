@@ -13,4 +13,7 @@ class AppStrings {
   static const String myToDoList = 'My To-Do List';
   static const String editTask = 'Edit Task';
   static const String deleteTask = 'Delete Task';
+  static const String pending = 'Pending';
+  static const String completed = 'Completed';
+  static const String ready = 'Ready';
 }
