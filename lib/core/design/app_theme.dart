@@ -52,11 +52,7 @@ class AppTheme {
       labelLarge: TextStyle(color: AppColors.black, fontSize: 18, fontWeight: FontWeight.w700),
 
       /// Label for the text Form =====>
-      labelMedium: TextStyle(
-        color: AppColors.primaryColor,
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
+      labelMedium: TextStyle(color: AppColors.white, fontSize: 12, fontWeight: FontWeight.w700),
       labelSmall: TextStyle(
         color: AppColors.headlineText,
         fontSize: 14,
@@ -64,9 +60,15 @@ class AppTheme {
       ),
 
       /// ========> Appbar text &&  form hint text
-      bodyMedium: TextStyle(color: AppColors.black, fontSize: 16, fontWeight: FontWeight.w400),
-      bodySmall: TextStyle(color: AppColors.black, fontSize: 14, fontWeight: FontWeight.w400),
+      bodyMedium: TextStyle(color: AppColors.grey, fontSize: 16, fontWeight: FontWeight.w400),
+      bodySmall: TextStyle(
+        color: AppColors.black,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+        fontStyle: FontStyle.italic,
+      ),
       titleMedium: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w500),
+      titleSmall: TextStyle(color: AppColors.black, fontSize: 14, fontWeight: FontWeight.w700),
 
       /// Card title ======>
     ),

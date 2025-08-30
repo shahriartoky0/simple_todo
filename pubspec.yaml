@@ -13,7 +13,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   #for local database [isar]
   isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  isar_flutter_libs:
+    git:
+      url: https://github.com/MrLittleWhite/isar_flutter_libs.git
   path_provider: ^2.1.1
   #for date manage
   intl:
