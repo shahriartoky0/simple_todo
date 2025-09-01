@@ -16,4 +16,13 @@ class AppStrings {
   static const String pending = 'Pending';
   static const String completed = 'Completed';
   static const String ready = 'Ready';
+  static const String addTask = 'Add Task';
+
+  // Task page
+  static const String taskTitle = 'Task Title';
+  static const String enterTheTaskTitle = 'Enter the title';
+  static const String taskDescription = 'Task Description';
+  static const String taskStatus = 'Task Status';
+  static const String addNewTask = 'Add New Task';
+  static const String cancel = 'cancel';
 }

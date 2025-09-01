@@ -77,60 +77,52 @@ class TaskTile extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSizes.md),
                     Expanded(child: Text(taskTitle, style: context.txtTheme.labelLarge)),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: PopupMenuButton<String>(
-                        onSelected: (String value) {
-                          switch (value) {
-                            case 'edit':
-                              onEdit();
-                              break;
-                            case 'delete':
-                              onDelete();
-                              break;
-                          }
-                        },
-                        itemBuilder:
-                            (BuildContext context) => <PopupMenuEntry<String>>[
-                              PopupMenuItem<String>(
-                                value: 'edit',
-                                child: Row(
-                                  children: <Widget>[
-                                    const Icon(Icons.edit, color: AppColors.black, size: 20),
-                                    const SizedBox(width: AppSizes.sm),
-                                    Text(
-                                      AppStrings.editTask.tr,
-                                      style: context.txtTheme.titleSmall,
-                                    ),
-                                  ],
-                                ),
+                    PopupMenuButton<String>(
+                      onSelected: (String value) {
+                        switch (value) {
+                          case 'edit':
+                            onEdit();
+                            break;
+                          case 'delete':
+                            onDelete();
+                            break;
+                        }
+                      },
+                      itemBuilder:
+                          (BuildContext context) => <PopupMenuEntry<String>>[
+                            PopupMenuItem<String>(
+                              value: 'edit',
+                              child: Row(
+                                children: <Widget>[
+                                  const Icon(Icons.edit, color: AppColors.black, size: 20),
+                                  const SizedBox(width: AppSizes.sm),
+                                  Text(
+                                    AppStrings.editTask.tr,
+                                    style: context.txtTheme.titleSmall,
+                                  ),
+                                ],
                               ),
-                              PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Row(
-                                  children: <Widget>[
-                                    const Icon(
-                                      CupertinoIcons.delete_solid,
-                                      color: AppColors.darkRed,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: AppSizes.sm),
-                                    Text(
-                                      AppStrings.deleteTask.tr,
-                                      style: context.txtTheme.titleSmall,
-                                    ),
-                                  ],
-                                ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                children: <Widget>[
+                                  const Icon(
+                                    CupertinoIcons.delete_solid,
+                                    color: AppColors.darkRed,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: AppSizes.sm),
+                                  Text(
+                                    AppStrings.deleteTask.tr,
+                                    style: context.txtTheme.titleSmall,
+                                  ),
+                                ],
                               ),
-                            ],
-                        icon: const Icon(Icons.more_vert, color: AppColors.grey).centered,
-                        offset: const Offset(0, -40),
-                      ),
+                            ),
+                          ],
+                      icon: const Icon(Icons.more_vert, color: AppColors.grey).centered,
+                      offset: const Offset(0, -10),
                     ),
                   ],
                 ),

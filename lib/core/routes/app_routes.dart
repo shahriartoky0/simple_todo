@@ -11,6 +11,7 @@ class AppRoutes {
 
   //home routes
   static const String homeRoute = "/home-page";
+  static const String taskRoute = "/task-page";
 
 
 

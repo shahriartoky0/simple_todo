@@ -1,20 +1,23 @@
-import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 
-class HomeController extends GetxController {
-  final TextEditingController taskTitle = TextEditingController();
-  final TextEditingController taskDescription = TextEditingController();
+class TaskController extends GetxController {
 
+  final RxInt count = 0.obs;
+
+  void increment() => count.value++;
+
+
+  
   /// [onInit] Lifecycle method called when the controller is initialized.
   ///
   /// Resets loading states, clears existing data, and triggers and more..
   /// initial fetch
-  ///
+  /// 
   @override
   void onInit() {
     super.onInit();
+    count.value = 0;
   }
-
 
   /// [dispose] Lifecycle method called when the controller is destroyed.
   ///
@@ -22,5 +25,6 @@ class HomeController extends GetxController {
   @override
   void dispose() {
     super.dispose();
+    count.value = 0;
   }
 }

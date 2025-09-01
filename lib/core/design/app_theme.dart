@@ -10,6 +10,12 @@ class AppTheme {
     iconTheme: const IconThemeData(opacity: 1, color: AppColors.primaryColor),
     fontFamily: 'satoshi',
     inputDecorationTheme: InputDecorationTheme(
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      floatingLabelStyle: const TextStyle(
+        color: AppColors.primaryColor,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+      ),
       labelStyle: const TextStyle(
         color: AppColors.primaryColor,
         fontSize: 16,
@@ -36,9 +42,10 @@ class AppTheme {
         borderSide: const BorderSide(color: AppColors.primaryColor, width: 1.0),
       ),
       hintStyle: const TextStyle(
-        color: AppColors.primaryColor,
-        fontSize: 14,
+        color: AppColors.grey,
+        fontSize: 13,
         fontWeight: FontWeight.w700,
+        fontStyle: FontStyle.italic
       ),
     ),
 
@@ -81,8 +88,9 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        foregroundColor: AppColors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     dividerColor: Colors.grey,
