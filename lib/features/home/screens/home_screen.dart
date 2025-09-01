@@ -6,6 +6,7 @@ import 'package:simple_todo/core/common/widgets/custom_modal.dart';
 import 'package:simple_todo/core/config/app_strings.dart';
 import 'package:simple_todo/core/data/local/collection/task.dart';
 import 'package:simple_todo/core/extensions/context_extensions.dart';
+import 'package:simple_todo/core/extensions/date_time_extensions.dart';
 import 'package:simple_todo/core/utils/logger_utils.dart';
 import '../../../core/config/app_sizes.dart';
 import '../controllers/home_controller.dart';
@@ -23,34 +24,42 @@ class HomeScreen extends GetView<HomeController> {
         child: Column(
           children: <Widget>[
             ///======> To-DO list ======>
-            ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.screenHorizontal),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemBuilder: (BuildContext context, int index) {
-                return TaskTile(
-                  taskStatus: TaskStatus.ready,
-                  taskTitle: 'Task Title',
-                  taskDescription: 'Task is to make the app',
-                  taskTime: 'By 2 days ....',
-                  onEdit: () {},
-                  onDelete: () {},
-                  onStatusChanged: (TaskStatus taskStatus) {
-                    LoggerUtils.debug(taskStatus.name);
-                  },
-                );
-              },
-              separatorBuilder: (_, _) {
-                return const SizedBox(height: AppSizes.md);
-              },
-              itemCount: 10,
+            Obx(
+              () => ListView.separated(
+                reverse: true,
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.screenHorizontal),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (BuildContext context, int index) {
+                  final Task task = controller.taskList[index];
+
+                  return TaskTile(
+                    taskStatus: task.status,
+                    taskTitle: task.title,
+                    taskDescription: task.description,
+                    taskTime: task.createdAt?.smartDate ?? AppStrings.aWhileAgo.tr,
+                    onEdit: () {},
+                    onDelete: () {
+                      controller.deleteTask(taskId: task.id);
+                    },
+                    onStatusChanged: (TaskStatus taskStatus) {
+                      // LoggerUtils.debug(taskStatus.name);
+                      controller.changeStatus(task: task, newStatus: taskStatus);
+                    },
+                  );
+                },
+                separatorBuilder: (_, _) {
+                  return const SizedBox(height: AppSizes.md);
+                },
+                itemCount: controller.taskList.length,
+              ),
             ),
           ],
         ),
       ),
 
       /// ==============> Add Task Button ===================>
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           // Get.toNamed(AppRoutes.taskRoute);
@@ -60,6 +69,8 @@ class HomeScreen extends GetView<HomeController> {
             title: AppStrings.addNewTask.tr,
             height: MediaQuery.of(context).size.height * 0.75,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 TextFormField(
                   controller: controller.taskTitle,
@@ -78,9 +89,12 @@ class HomeScreen extends GetView<HomeController> {
                 const SizedBox(height: AppSizes.lg),
                 SizedBox(
                   width: context.screenWidth * 0.9,
-                  child: ElevatedButton(onPressed: () {
-
-                  }, child: Text(AppStrings.addTask.tr)),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      controller.addTask();
+                    },
+                    child: Text(AppStrings.addTask.tr),
+                  ),
                 ),
               ],
             ),

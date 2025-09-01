@@ -22,7 +22,11 @@ class AppStrings {
   static const String taskTitle = 'Task Title';
   static const String enterTheTaskTitle = 'Enter the title';
   static const String taskDescription = 'Task Description';
+  static const String taskAdded = 'Task Added';
+  static const String taskRemoved = 'Task Removed';
   static const String taskStatus = 'Task Status';
   static const String addNewTask = 'Add New Task';
   static const String cancel = 'cancel';
+  static const String aWhileAgo = 'A while ago';
+  static const String giveADescription= 'Give the task a description';
 }

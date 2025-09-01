@@ -45,19 +45,24 @@ class AppTheme {
         color: AppColors.grey,
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        fontStyle: FontStyle.italic
+        fontStyle: FontStyle.italic,
       ),
     ),
 
     /// Floating action member ========>
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primaryColor,
       foregroundColor: AppColors.white,
+      backgroundColor: AppColors.primaryColor,
+      extendedTextStyle: TextStyle(
+        color: AppColors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
     ),
     textTheme: const TextTheme(
       headlineMedium: TextStyle(
         color: AppColors.primaryColor,
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
       ),
 

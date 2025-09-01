@@ -53,7 +53,7 @@ class ToastManager {
 
     overlayState.insert(_currentToast!);
 
-    Future.delayed(duration + animationDuration, () {
+    Future<void>.delayed(duration + animationDuration, () {
       _currentToast?.remove();
       _currentToast = null;
     });

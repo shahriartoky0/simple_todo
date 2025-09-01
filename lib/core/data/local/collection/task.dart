@@ -22,7 +22,7 @@ class Task {
     required this.title,
     required this.description,
     DateTime? createdAt,
-    this.status = TaskStatus.ready,
+    this.status = TaskStatus.pending,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Helper method to create from Map

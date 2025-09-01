@@ -96,10 +96,7 @@ class TaskTile extends StatelessWidget {
                                 children: <Widget>[
                                   const Icon(Icons.edit, color: AppColors.black, size: 20),
                                   const SizedBox(width: AppSizes.sm),
-                                  Text(
-                                    AppStrings.editTask.tr,
-                                    style: context.txtTheme.titleSmall,
-                                  ),
+                                  Text(AppStrings.editTask.tr, style: context.txtTheme.titleSmall),
                                 ],
                               ),
                             ),
@@ -126,9 +123,8 @@ class TaskTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSizes.md),
+                const SizedBox(height: AppSizes.sm),
                 Text(taskDescription),
-                const SizedBox(height: AppSizes.md),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
