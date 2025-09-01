@@ -24,7 +24,7 @@ class FileManagerService {
             '"${task.title.replaceAll('"', '""')}",'
             '"${task.description.replaceAll('"', '""')}",'
             '"${task.status.name}",'
-            '"${task.createdAt?.smartDate}"\n'; // Convert DateTime to timestamp
+            '"${task.createdAt?.smartDate}"\n';
       }
 
       // Create file
@@ -42,9 +42,7 @@ class FileManagerService {
     }
   }
 
-
-
-// Unified import method for both CSV and JSON
+  // Unified import method for both CSV and JSON
   static Future<List<Task>?> importTasks() async {
     try {
       // Pick file with both CSV and JSON extensions
@@ -78,7 +76,7 @@ class FileManagerService {
     }
   }
 
-// Fallback method to detect content type by analyzing structure
+  // Fallback method to detect content type by analyzing structure
   static List<Task>? _parseByContent(String content) {
     try {
       final String trimmedContent = content.trim();
@@ -88,7 +86,6 @@ class FileManagerService {
         LoggerUtils.debug('Content appears to be JSON, attempting JSON parse');
         return _parseJSONContent(content);
       }
-
 
       if (trimmedContent.contains(',') && trimmedContent.contains('\n')) {
         LoggerUtils.debug('Content appears to be CSV, attempting CSV parse');
@@ -108,7 +105,6 @@ class FileManagerService {
     }
   }
 
-
   static List<Task> _parseCSVContent(String csvContent) {
     final List<Task> tasks = <Task>[];
     final List<String> lines = csvContent.split('\n');
@@ -124,7 +120,7 @@ class FileManagerService {
         final List<String> fields = _parseCSVRow(line);
         if (fields.length >= 4) {
           final TaskStatus status = TaskStatus.values.firstWhere(
-                (TaskStatus s) => s.name == fields[3],
+            (TaskStatus s) => s.name == fields[3],
             orElse: () => TaskStatus.pending,
           );
 
@@ -236,7 +232,7 @@ class FileManagerService {
       if (taskData['status'] != null) {
         final String statusStr = taskData['status'].toString().toLowerCase();
         status = TaskStatus.values.firstWhere(
-              (TaskStatus s) => s.name.toLowerCase() == statusStr,
+          (TaskStatus s) => s.name.toLowerCase() == statusStr,
           orElse: () => TaskStatus.pending,
         );
       }
@@ -258,12 +254,7 @@ class FileManagerService {
         }
       }
 
-      return Task(
-        title: title,
-        description: description,
-        status: status,
-        createdAt: createdAt,
-      );
+      return Task(title: title, description: description, status: status, createdAt: createdAt);
     } catch (e) {
       LoggerUtils.debug('Error creating task from JSON: $e');
       return null;
