@@ -8,8 +8,9 @@ import '../../design/app_colors.dart';
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String label;
   final bool hasLeading;
+  final List<Widget>? actions;
 
-  const CustomAppBar({super.key, required this.label, this.hasLeading = true});
+  const CustomAppBar({super.key, required this.label, this.hasLeading = true, this.actions});
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +28,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               : null,
       centerTitle: true,
       title: Text(label, style: context.txtTheme.headlineMedium),
-      actions: const <Widget>[
-        SizedBox(width: AppSizes.xxl),
-        // You can add additional actions if necessary
-      ],
+      actions:
+          actions ??
+          <Widget>[
+            const SizedBox(width: AppSizes.xxl),
+            // You can add additional actions if necessary
+          ],
     );
   }
 

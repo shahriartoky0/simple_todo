@@ -1,6 +1,7 @@
 // simple_bottom_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:simple_todo/core/config/app_sizes.dart';
 import 'package:simple_todo/core/extensions/context_extensions.dart';
 
 import '../../design/app_colors.dart';
@@ -25,7 +26,7 @@ class CustomBottomSheet extends StatelessWidget {
     return Container(
       height: calculatedHeight,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         border: Border(top: BorderSide(width: 5.0, color: AppColors.primaryColor)),
       ),
@@ -46,12 +47,22 @@ class CustomBottomSheet extends StatelessWidget {
           // Title
           if (title != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Text(title!, style: context.txtTheme.labelLarge),
             ),
 
-          // Content
-          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: child)),
+          // ===================> Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 8,
+                bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.md, // Keyboard padding
+              ),
+              child: child,
+            ),
+          ),
         ],
       ),
     );
@@ -72,6 +83,7 @@ class CustomBottomSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: isScrollControlled,
       isDismissible: isDismissible,
+      useSafeArea: true,
       sheetAnimationStyle: const AnimationStyle(
         curve: Curves.easeInOut,
         duration: Duration(milliseconds: 300),
