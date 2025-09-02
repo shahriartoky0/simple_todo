@@ -10,7 +10,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool hasLeading;
   final List<Widget>? actions;
 
-  const CustomAppBar({super.key, required this.label, this.hasLeading = true, this.actions});
+  const CustomAppBar({super.key, required this.label, this.hasLeading = false, this.actions});
 
   @override
   Widget build(BuildContext context) {

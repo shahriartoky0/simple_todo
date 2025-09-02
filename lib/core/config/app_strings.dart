@@ -31,7 +31,7 @@ class AppStrings {
   static const String editTheTask = 'Edit the Task';
   static const String cancel = 'cancel';
   static const String aWhileAgo = 'A while ago';
-  static const String giveADescription = 'Give the task a description';
+  static const String giveADescription = 'Give the task a description !!';
 
   // Export - Import
   static const String export = 'Export';

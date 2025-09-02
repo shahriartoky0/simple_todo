@@ -29,6 +29,7 @@ class HomeController extends GetxController {
 
   /// ================ ADD TASK ==================>
   Future<void> addTask() async {
+
     if (taskDescription.text.isEmpty) {
       ToastManager.show(
         message: AppStrings.giveADescription.tr,
@@ -37,6 +38,7 @@ class HomeController extends GetxController {
         backgroundColor: AppColors.darkRed,
         animationDuration: const Duration(milliseconds: 900),
         animationCurve: Curves.easeInSine,
+        fromTop: true,
         duration: const Duration(seconds: 1),
       );
       return;

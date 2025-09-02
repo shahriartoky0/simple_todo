@@ -7,6 +7,7 @@ import 'package:simple_todo/core/config/app_strings.dart';
 import 'package:simple_todo/core/data/local/collection/task.dart';
 import 'package:simple_todo/core/extensions/context_extensions.dart';
 import 'package:simple_todo/core/extensions/date_time_extensions.dart';
+import 'package:simple_todo/features/home/widgets/tile_animation.dart';
 import '../../../core/config/app_sizes.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/task_tile.dart';
@@ -20,7 +21,6 @@ class HomeScreen extends GetView<HomeController> {
       // backgroundColor: AppColors.headlineText,
       appBar: CustomAppBar(
         label: AppStrings.myToDoList.tr,
-        hasLeading: false,
         actions: <Widget>[
           TextButton(
             onPressed: () {
@@ -43,33 +43,36 @@ class HomeScreen extends GetView<HomeController> {
                 itemBuilder: (BuildContext context, int index) {
                   final Task task = controller.taskList[index];
 
-                  return TaskTile(
-                    taskStatus: task.status,
-                    taskTitle: task.title,
-                    taskDescription: task.description,
-                    taskTime: task.createdAt?.smartDate ?? AppStrings.aWhileAgo.tr,
-                    onEdit: () {
-                      /// ==============For Editing the existing task =============>
-                      controller.taskTitle.text = task.title;
-                      controller.taskDescription.text = task.description;
-                      taskModal(
-                        forEdit: true,
-                        context: context,
-                        onPressed: () {
-                          controller.editTask(existingTask: task);
-                        },
-                      );
-                    },
-                    onDelete: () {
-                      controller.deleteTask(taskId: task.id);
-                    },
-                    onStatusChanged: (TaskStatus taskStatus) {
-                      // LoggerUtils.debug(taskStatus.name);
-                      controller.changeStatus(task: task, newStatus: taskStatus);
-                    },
+                  return AnimatedTaskTile(
+                    index: index,
+                    child: TaskTile(
+                      taskStatus: task.status,
+                      taskTitle: task.title,
+                      taskDescription: task.description,
+                      taskTime: task.createdAt?.smartDate ?? AppStrings.aWhileAgo.tr,
+                      onEdit: () {
+                        /// ==============For Editing the existing task =============>
+                        controller.taskTitle.text = task.title;
+                        controller.taskDescription.text = task.description;
+                        taskModal(
+                          forEdit: true,
+                          context: context,
+                          onPressed: () {
+                            controller.editTask(existingTask: task);
+                          },
+                        );
+                      },
+                      onDelete: () {
+                        controller.deleteTask(taskId: task.id);
+                      },
+                      onStatusChanged: (TaskStatus taskStatus) {
+                        // LoggerUtils.debug(taskStatus.name);
+                        controller.changeStatus(task: task, newStatus: taskStatus);
+                      },
+                    ),
                   );
                 },
-                separatorBuilder: (_, _) {
+                separatorBuilder: (_, __) {
                   return const SizedBox(height: AppSizes.md);
                 },
                 itemCount: controller.taskList.length,
@@ -104,25 +107,28 @@ class HomeScreen extends GetView<HomeController> {
     return CustomBottomSheet.show(
       context: context,
       title: forEdit ? AppStrings.editTheTask.tr : AppStrings.addNewTask.tr,
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.75,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          if (forEdit) const SizedBox.shrink() else Align(
-                alignment: Alignment.bottomRight,
-                child: TextButton(
-                  onPressed: () {
-                    controller.importTasks();
-                  },
-                  child: Text(
-                    AppStrings.import.tr,
-                    style: context.txtTheme.titleSmall?.copyWith(
-                      decoration: TextDecoration.underline,
-                    ),
+          if (forEdit)
+            const SizedBox.shrink()
+          else
+            Align(
+              alignment: Alignment.bottomRight,
+              child: TextButton(
+                onPressed: () {
+                  controller.importTasks();
+                },
+                child: Text(
+                  AppStrings.import.tr,
+                  style: context.txtTheme.titleSmall?.copyWith(
+                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),
+            ),
           const SizedBox(height: AppSizes.lg),
           TextFormField(
             controller: controller.taskTitle,
