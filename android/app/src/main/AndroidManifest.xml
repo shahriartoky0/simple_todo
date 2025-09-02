@@ -7,7 +7,7 @@
         android:accessibilityLiveRegion="POLITICAL" />-->
 
     <application
-        android:label="simple_todo"
+        android:label="Simple To-Do"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
