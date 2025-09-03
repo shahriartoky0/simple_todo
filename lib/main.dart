@@ -21,7 +21,6 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       initialRoute: AppRoutes.firstSplashScreen,
       getPages: AppNavigation.routes,
-
       initialBinding: ControllerBinder(),
       debugShowCheckedModeBanner: false,
     );

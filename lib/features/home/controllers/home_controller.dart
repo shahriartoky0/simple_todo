@@ -129,6 +129,7 @@ class HomeController extends GetxController {
   /// ================ DELETE TASK ==================>
   Future<void> deleteTask({required int taskId}) async {
     LoggerUtils.debug(taskId);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     await TaskDatabase().deleteTask(taskId);
 
     /// Show the toast ===>

@@ -1,12 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:lottie/lottie.dart';
 import 'package:simple_todo/core/common/widgets/custom_appbar.dart';
 import 'package:simple_todo/core/common/widgets/custom_modal.dart';
+import 'package:simple_todo/core/config/app_asset_path.dart';
+import 'package:simple_todo/core/config/app_constants.dart';
 import 'package:simple_todo/core/config/app_strings.dart';
 import 'package:simple_todo/core/data/local/collection/task.dart';
+import 'package:simple_todo/core/design/app_colors.dart';
 import 'package:simple_todo/core/extensions/context_extensions.dart';
 import 'package:simple_todo/core/extensions/date_time_extensions.dart';
+import 'package:simple_todo/core/extensions/widget_extensions.dart';
 import 'package:simple_todo/features/home/widgets/tile_animation.dart';
 import '../../../core/config/app_sizes.dart';
 import '../controllers/home_controller.dart';
@@ -35,48 +40,71 @@ class HomeScreen extends GetView<HomeController> {
           children: <Widget>[
             ///======> To-DO list ======>
             Obx(
-              () => ListView.separated(
-                reverse: true,
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.screenHorizontal),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemBuilder: (BuildContext context, int index) {
-                  final Task task = controller.taskList[index];
+              () =>
+                  controller.taskList.isEmpty
+                      ? Column(
+                        children: <Widget>[
+                          SizedBox(height: context.screenHeight * 0.15),
+                          Lottie.asset(
+                            animate: true,
+                            repeat: true,
+                            AppAssetPath.emptyTodoAnimation,
+                          ).centered,
+                        ],
+                      )
+                      : ListView.separated(
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.screenHorizontal),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemBuilder: (BuildContext context, int index) {
+                          final Task task = controller.taskList[index];
 
-                  return AnimatedTaskTile(
-                    index: index,
-                    child: TaskTile(
-                      taskStatus: task.status,
-                      taskTitle: task.title,
-                      taskDescription: task.description,
-                      taskTime: task.createdAt?.smartDate ?? AppStrings.aWhileAgo.tr,
-                      onEdit: () {
-                        /// ==============For Editing the existing task =============>
-                        controller.taskTitle.text = task.title;
-                        controller.taskDescription.text = task.description;
-                        taskModal(
-                          forEdit: true,
-                          context: context,
-                          onPressed: () {
-                            controller.editTask(existingTask: task);
-                          },
-                        );
-                      },
-                      onDelete: () {
-                        controller.deleteTask(taskId: task.id);
-                      },
-                      onStatusChanged: (TaskStatus taskStatus) {
-                        // LoggerUtils.debug(taskStatus.name);
-                        controller.changeStatus(task: task, newStatus: taskStatus);
-                      },
-                    ),
-                  );
-                },
-                separatorBuilder: (_, __) {
-                  return const SizedBox(height: AppSizes.md);
-                },
-                itemCount: controller.taskList.length,
-              ),
+                          return AnimatedTaskTile(
+                            index: index,
+                            child: Dismissible(
+                              key: Key("${task.createdAt}"),
+                              onDismissed: (_) {
+                                controller.deleteTask(taskId: task.id);
+                              },
+                              background: const Icon(
+                                CupertinoIcons.delete_solid,
+                                color: AppColors.darkRed,
+                                size: 36,
+                              ),
+                              child: TaskTile(
+                                taskStatus: task.status,
+                                taskTitle: task.title,
+                                taskDescription: task.description,
+                                taskTime: task.createdAt?.smartDate ?? AppStrings.aWhileAgo.tr,
+                                onEdit: () {
+                                  /// ==============For Editing the existing task =============>
+                                  controller.taskTitle.text = task.title;
+                                  controller.taskDescription.text = task.description;
+                                  taskModal(
+                                    forEdit: true,
+                                    context: context,
+                                    onPressed: () {
+                                      controller.editTask(existingTask: task);
+                                    },
+                                  );
+                                },
+                                onDelete: () {
+                                  controller.deleteTask(taskId: task.id);
+                                },
+                                onStatusChanged: (TaskStatus taskStatus) {
+                                  // LoggerUtils.debug(taskStatus.name);
+                                  controller.changeStatus(task: task, newStatus: taskStatus);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        separatorBuilder: (_, __) {
+                          return const SizedBox(height: AppSizes.md);
+                        },
+                        itemCount: controller.taskList.length,
+                      ),
             ),
           ],
         ),
@@ -104,6 +132,12 @@ class HomeScreen extends GetView<HomeController> {
     required VoidCallback onPressed,
     bool forEdit = false,
   }) {
+    final FocusNode descriptionFocusNode = FocusNode();
+
+    // Request focus when the modal is shown
+    Future<void>.delayed(const Duration(milliseconds: 100), () {
+      FocusScope.of(context).requestFocus(descriptionFocusNode);
+    });
     return CustomBottomSheet.show(
       context: context,
       title: forEdit ? AppStrings.editTheTask.tr : AppStrings.addNewTask.tr,
@@ -140,6 +174,7 @@ class HomeScreen extends GetView<HomeController> {
           const SizedBox(height: AppSizes.xl),
           TextFormField(
             controller: controller.taskDescription,
+            focusNode: descriptionFocusNode,
             decoration: InputDecoration(labelText: AppStrings.taskDescription.tr),
             minLines: 6,
             maxLines: 8,
