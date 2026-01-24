@@ -212,6 +212,12 @@ class HomeController extends GetxController {
   ///
   /// Cleans up by resetting loading states and clearing lists and more...
   @override
+  void onClose() {
+    taskTitle.dispose();
+    taskDescription.dispose();
+    super.onClose();
+  }
+  @override
   void dispose() {
     taskTitle.dispose();
     taskDescription.dispose();
