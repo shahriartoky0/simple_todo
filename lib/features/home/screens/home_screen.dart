@@ -27,11 +27,16 @@ class HomeScreen extends GetView<HomeController> {
       appBar: CustomAppBar(
         label: AppStrings.myToDoList.tr,
         actions: <Widget>[
-          TextButton(
-            onPressed: () {
-              controller.exportTasksToCSV();
-            },
-            child: Text(AppStrings.export.tr, style: context.txtTheme.titleSmall),
+          Obx(
+            ()=> Visibility(
+              visible:controller.taskList.isNotEmpty ,
+              child: TextButton(
+                onPressed: () {
+                  controller.exportTasksToCSV();
+                },
+                child: Text(AppStrings.export.tr, style: context.txtTheme.titleSmall),
+              ),
+            ),
           ),
         ],
       ),

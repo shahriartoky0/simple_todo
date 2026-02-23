@@ -17,23 +17,31 @@ class FileManagerService {
       final Directory directory = await getApplicationDocumentsDirectory();
 
       // Create CSV content
+      // FIX: Store createdAt as millisecondsSinceEpoch (integer) so it can be
+      // reliably parsed back on import via int.tryParse().
       String csvContent = 'ID,Title,Description,Status,CreatedAt\n';
       for (final Task task in tasks) {
         csvContent +=
-            '"${task.id}",'
+        '"${task.id}",'
             '"${task.title.replaceAll('"', '""')}",'
             '"${task.description.replaceAll('"', '""')}",'
             '"${task.status.name}",'
-            '"${task.createdAt?.smartDate}"\n';
+            '"${task.createdAt?.millisecondsSinceEpoch}"\n';
       }
 
       // Create file
-      final String fileName = 'To Do List_${DateTime.now().compactTime}.csv';
+      final String fileName = 'To Do List_${DateTime.now().millisecondsSinceEpoch}.csv';
       final File file = File('${directory.path}/$fileName');
       await file.writeAsString(csvContent);
 
       // Share the file
-      await Share.shareXFiles(<XFile>[XFile(file.path)], text: AppStrings.myToDoList.tr);
+      // FIX: Explicitly declare mimeType as 'text/csv' so the OS correctly
+      // identifies the file. Without this it defaults to 'text/plain' and
+      // saves the file with a .txt extension when stored to device storage.
+      await Share.shareXFiles(
+        <XFile>[XFile(file.path, mimeType: 'text/csv')],
+        text: AppStrings.myToDoList.tr,
+      );
 
       return true;
     } catch (e) {
@@ -120,19 +128,26 @@ class FileManagerService {
         final List<String> fields = _parseCSVRow(line);
         if (fields.length >= 4) {
           final TaskStatus status = TaskStatus.values.firstWhere(
-            (TaskStatus s) => s.name == fields[3],
+                (TaskStatus s) => s.name == fields[3],
             orElse: () => TaskStatus.pending,
           );
 
-          // Parse timestamp to DateTime
-          final int timestamp = int.tryParse(fields[4]) ?? DateTime.now().millisecondsSinceEpoch;
+          // FIX: Parse createdAt from millisecondsSinceEpoch integer string.
+          // fields[4] may not exist if the row has only 4 columns, so guard it.
+          DateTime createdAt = DateTime.now();
+          if (fields.length >= 5 && fields[4].isNotEmpty) {
+            final int? timestamp = int.tryParse(fields[4]);
+            if (timestamp != null) {
+              createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
+            }
+          }
 
           tasks.add(
             Task(
               title: fields[1],
               description: fields[2],
               status: status,
-              createdAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
+              createdAt: createdAt,
             ),
           );
         }
@@ -232,7 +247,7 @@ class FileManagerService {
       if (taskData['status'] != null) {
         final String statusStr = taskData['status'].toString().toLowerCase();
         status = TaskStatus.values.firstWhere(
-          (TaskStatus s) => s.name.toLowerCase() == statusStr,
+              (TaskStatus s) => s.name.toLowerCase() == statusStr,
           orElse: () => TaskStatus.pending,
         );
       }
@@ -245,11 +260,15 @@ class FileManagerService {
           createdAt = DateTime.fromMillisecondsSinceEpoch(taskData['createdAt']);
         } else if (taskData['createdAt'] is String) {
           final String dateStr = taskData['createdAt'];
-          final DateTime? parsedDate = DateTime.tryParse(dateStr);
-          if (parsedDate != null) {
-            createdAt = parsedDate;
+          // Try parsing as integer string (millisecondsSinceEpoch) first
+          final int? timestamp = int.tryParse(dateStr);
+          if (timestamp != null) {
+            createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
           } else {
-            createdAt = DateTime.now();
+            final DateTime? parsedDate = DateTime.tryParse(dateStr);
+            if (parsedDate != null) {
+              createdAt = parsedDate;
+            }
           }
         }
       }

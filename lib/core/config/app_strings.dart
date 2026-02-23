@@ -18,6 +18,7 @@ class AppStrings {
   static const String ready = 'Ready';
   static const String addTask = 'Add Task';
   static const String updateTask = 'Update Task';
+  static const String giveATitle = 'Give the task a title';
 
   // Task page
   static const String taskTitle = 'Task Title';

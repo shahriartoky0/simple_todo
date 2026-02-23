@@ -29,8 +29,22 @@ class HomeController extends GetxController {
 
   /// ================ ADD TASK ==================>
   Future<void> addTask() async {
+    // FIX: Validate both title and description before adding.
+    // if (taskTitle.text.trim().isEmpty) {
+    //   ToastManager.show(
+    //     message: AppStrings.giveATitle.tr,
+    //     icon: const Icon(CupertinoIcons.info_circle_fill, color: AppColors.white),
+    //     textColor: AppColors.white,
+    //     backgroundColor: AppColors.darkRed,
+    //     animationDuration: const Duration(milliseconds: 900),
+    //     animationCurve: Curves.easeInSine,
+    //     fromTop: true,
+    //     duration: const Duration(seconds: 1),
+    //   );
+    //   return;
+    // }
 
-    if (taskDescription.text.isEmpty) {
+    if (taskDescription.text.trim().isEmpty) {
       ToastManager.show(
         message: AppStrings.giveADescription.tr,
         icon: const Icon(CupertinoIcons.info_circle_fill, color: AppColors.white),
@@ -43,7 +57,8 @@ class HomeController extends GetxController {
       );
       return;
     }
-    final Task task = Task(title: taskTitle.text, description: taskDescription.text);
+
+    final Task task = Task(title: taskTitle.text.trim(), description: taskDescription.text.trim());
     await TaskDatabase().addTask(task);
     Get.back();
 
@@ -63,16 +78,24 @@ class HomeController extends GetxController {
 
     /// Refresh the list
     await loadTasks();
-
-    final List<Task> tasksList = await TaskDatabase().fetchTasks();
-    LoggerUtils.debug(tasksList[0].description);
   }
 
   /// ================ Update The Existing TASK ==================>
   Future<void> editTask({required Task existingTask}) async {
-    /// ==========> Load the existing values ======>
+    if (taskTitle.text.trim().isEmpty) {
+      ToastManager.show(
+        message: AppStrings.giveATitle.tr,
+        icon: const Icon(CupertinoIcons.info_circle_fill, color: AppColors.white),
+        textColor: AppColors.white,
+        backgroundColor: AppColors.darkRed,
+        animationDuration: const Duration(milliseconds: 900),
+        animationCurve: Curves.easeInSine,
+        duration: const Duration(seconds: 1),
+      );
+      return;
+    }
 
-    if (taskDescription.text.isEmpty) {
+    if (taskDescription.text.trim().isEmpty) {
       ToastManager.show(
         message: AppStrings.giveADescription.tr,
         icon: const Icon(CupertinoIcons.info_circle_fill, color: AppColors.white),
@@ -84,10 +107,11 @@ class HomeController extends GetxController {
       );
       return;
     }
+
     await TaskDatabase().updateTask(
       existingTask.id,
-      newDescription: taskDescription.text,
-      newTitle: taskTitle.text,
+      newDescription: taskDescription.text.trim(),
+      newTitle: taskTitle.text.trim(),
     );
     Get.back();
 
@@ -107,9 +131,6 @@ class HomeController extends GetxController {
 
     /// Refresh the list
     await loadTasks();
-
-    final List<Task> tasksList = await TaskDatabase().fetchTasks();
-    LoggerUtils.debug(tasksList[0].description);
   }
 
   /// ================ CHANGE TASK STATUS  ==================>
@@ -119,7 +140,7 @@ class HomeController extends GetxController {
       id: task.id,
       title: task.title,
       description: task.description,
-      createdAt: DateTime.now(),
+      createdAt: task.createdAt, // FIX: preserve the original createdAt instead of DateTime.now()
       status: newStatus,
     );
     await TaskDatabase().updateTaskObject(updatedTask);
@@ -148,8 +169,25 @@ class HomeController extends GetxController {
   /// =========================================== Export - Import  File =================================>
   Future<void> exportTasksToCSV() async {
     try {
-      final bool success = await FileManagerService.exportTasksToCSV(taskList);
-      if (success == false) {
+      // FIX: Always fetch the latest tasks fresh from the database right before
+      // exporting, then snapshot them with .toList() so the static service method
+      // receives a plain, immutable List<Task> — not a live RxList whose reactive
+      // wrapper can yield an empty iteration once the call crosses an async boundary.
+      await loadTasks();
+      final List<Task> snapshot = taskList.toList();
+
+      if (snapshot.isEmpty) {
+        ToastManager.show(
+          message: AppStrings.noTasksToImport.tr,
+          icon: const Icon(CupertinoIcons.info_circle, color: AppColors.white),
+          backgroundColor: AppColors.darkRed,
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      final bool success = await FileManagerService.exportTasksToCSV(snapshot);
+      if (!success) {
         ToastManager.show(
           message: AppStrings.exportFailed.tr,
           icon: const Icon(CupertinoIcons.xmark_circle, color: AppColors.white),
@@ -167,8 +205,7 @@ class HomeController extends GetxController {
     }
   }
 
-  // Import tasks from CSV
-
+  // Import tasks from CSV or JSON
   Future<void> importTasks() async {
     try {
       Get.back();
@@ -183,7 +220,6 @@ class HomeController extends GetxController {
         // Refresh task list
         await loadTasks();
 
-        // Determine file type for toast message
         ToastManager.show(
           message: '${importedTasks.length} ${AppStrings.taskImportSuccess.tr}',
           icon: const Icon(CupertinoIcons.checkmark_circle, color: AppColors.white),
@@ -208,19 +244,16 @@ class HomeController extends GetxController {
     }
   }
 
-  /// [dispose] Lifecycle method called when the controller is destroyed.
+  /// [onClose] Lifecycle method called when the controller is destroyed.
   ///
-  /// Cleans up by resetting loading states and clearing lists and more...
+  /// FIX: Removed the duplicate dispose() override. In GetX, onClose() is the
+  /// correct place to clean up resources. Having both onClose() and dispose()
+  /// caused the TextEditingControllers to be disposed twice, which can lead to
+  /// "A TextEditingController was used after being disposed" errors.
   @override
   void onClose() {
     taskTitle.dispose();
     taskDescription.dispose();
     super.onClose();
-  }
-  @override
-  void dispose() {
-    taskTitle.dispose();
-    taskDescription.dispose();
-    super.dispose();
   }
 }

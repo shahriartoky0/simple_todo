@@ -27,7 +27,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               )
               : null,
       centerTitle: true,
-      title: Text(label, style: context.txtTheme.headlineMedium),
+      title: Text(label, style: context.txtTheme.titleMedium),
       actions:
           actions ??
           <Widget>[
