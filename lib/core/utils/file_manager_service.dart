@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -65,32 +66,98 @@ class FileManagerService {
 
   // ─── Import ────────────────────────────────────────────────────────────────
 
+  // Returned values:
+  //   null              → user cancelled (no toast needed)
+  //   []  (empty list)  → file was valid format but contained no tasks
+  //   throws _ImportException → show the message as an error toast
   static Future<List<Task>?> importTasks() async {
     try {
+      // FIX: Use FileType.any instead of FileType.custom with allowedExtensions.
+      // On Android, CSV files are often served by file managers with a
+      // 'text/plain' MIME type, which makes FileType.custom's OS-level extension
+      // filter hide them entirely. FileType.any shows everything; we validate
+      // the format ourselves after the user picks a file.
       final FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: <String>['csv', 'json'],
-        dialogTitle: 'Select CSV or JSON file to import',
+        type: FileType.any,
+        dialogTitle: 'Select a CSV, XLSX or JSON file to import',
       );
 
-      if (result == null || result.files.single.path == null) return null;
+      // User tapped Cancel — return null silently.
+      if (result == null || result.files.isEmpty) return null;
 
-      final File file = File(result.files.single.path!);
-      if (!file.existsSync()) {
-        LoggerUtils.debug('Import file does not exist: ${file.path}');
-        return null;
+      final PlatformFile picked = result.files.single;
+      final String? path = picked.path;
+
+      if (path == null) {
+        throw _ImportException('Could not access the selected file.');
       }
 
-      final String contents = await file.readAsString(encoding: utf8);
-      if (contents.trim().isEmpty) return <Task>[];
+      // ── Extension check ───────────────────────────────────────────────────
+      final String name = picked.name.toLowerCase();
+      final bool isCsv  = name.endsWith('.csv');
+      final bool isJson = name.endsWith('.json');
+      final bool isXlsx = name.endsWith('.xlsx');
 
-      final String name = result.files.single.name.toLowerCase();
-      if (name.endsWith('.csv')) return _parseCSVContent(contents);
-      if (name.endsWith('.json')) return _parseJSONContent(contents);
-      return _parseByContent(contents);
+      if (!isCsv && !isJson && !isXlsx) {
+        throw _ImportException(
+          'Invalid file type "${picked.name}".\nOnly .csv, .xlsx and .json files are supported.',
+        );
+      }
+
+      // ── File existence check ──────────────────────────────────────────────
+      final File file = File(path);
+      if (!file.existsSync()) {
+        throw _ImportException('File not found. Please try again.');
+      }
+
+      // ── Parse ─────────────────────────────────────────────────────────────
+      try {
+        List<Task> tasks = <Task>[];
+
+        if (isXlsx) {
+          // XLSX is binary — read as bytes, never as a string.
+          final Uint8List bytes = await file.readAsBytes();
+          tasks = _parseXLSXContent(bytes);
+        } else {
+          // CSV and JSON are text files.
+          final String contents;
+          try {
+            contents = await file.readAsString(encoding: utf8);
+          } catch (_) {
+            throw _ImportException(
+              'Could not read the file. Make sure it is a valid text file.',
+            );
+          }
+
+          if (contents.trim().isEmpty) {
+            throw _ImportException('The selected file is empty.');
+          }
+
+          tasks = isCsv
+              ? _parseCSVContent(contents)
+              : _parseJSONContent(contents);
+        }
+
+        if (tasks.isEmpty) {
+          throw _ImportException(
+            'No valid tasks found in the file.\n'
+                'Make sure it was exported from this app.',
+          );
+        }
+
+        return tasks;
+      } on _ImportException {
+        rethrow;
+      } catch (e) {
+        throw _ImportException(
+          'Failed to parse the file. It may be corrupted or in the wrong format.',
+        );
+      }
+    } on _ImportException {
+      rethrow; // controller catches this and shows the message
     } catch (e) {
-      LoggerUtils.debug('Error importing file: $e');
-      return null;
+      LoggerUtils.debug('Unexpected import error: $e');
+      throw _ImportException('An unexpected error occurred. Please try again.');
     }
   }
 
@@ -251,6 +318,70 @@ class FileManagerService {
     return '${months[dt.month - 1]} $day, ${dt.year} – $hour:$min';
   }
 
+  // ─── XLSX parser ───────────────────────────────────────────────────────────
+
+  /// Parses a .xlsx file exported from this app or created manually in Excel /
+  /// Google Sheets. Expected column order (row 1 = header, skipped):
+  ///   A: ID  |  B: Title  |  C: Description  |  D: Status  |  E: CreatedAt
+  ///
+  /// Columns A and E are optional — if missing or unparseable the task is still
+  /// created with an auto-id and DateTime.now() respectively.
+  static List<Task> _parseXLSXContent(Uint8List bytes) {
+    final Excel excel = Excel.decodeBytes(bytes);
+    final List<Task> tasks = <Task>[];
+
+    // Use the first sheet that has data.
+    for (final String sheetName in excel.tables.keys) {
+      final Sheet? sheet = excel.tables[sheetName];
+      if (sheet == null || sheet.maxRows < 2) continue;
+
+      // Row 0 is the header — start from row 1.
+      for (int r = 1; r < sheet.maxRows; r++) {
+        try {
+          final List<Data?> row = sheet.row(r);
+
+          // Helper: safely read a cell as a trimmed string.
+          String cell(int col) =>
+              col < row.length ? (row[col]?.value?.toString().trim() ?? '') : '';
+
+          final String title       = cell(1); // column B
+          final String description = cell(2); // column C
+          final String statusStr   = cell(3); // column D
+          final String dateStr     = cell(4); // column E
+
+          if (title.isEmpty) continue; // skip blank rows
+
+          final TaskStatus status = TaskStatus.values.firstWhere(
+                (TaskStatus s) => s.name.toLowerCase() == statusStr.toLowerCase(),
+            orElse: () => TaskStatus.pending,
+          );
+
+          DateTime createdAt = DateTime.now();
+          if (dateStr.isNotEmpty) {
+            final int? epoch = int.tryParse(dateStr);
+            createdAt = epoch != null
+                ? DateTime.fromMillisecondsSinceEpoch(epoch)
+                : (DateTime.tryParse(dateStr) ?? DateTime.now());
+          }
+
+          tasks.add(Task(
+            title: title,
+            description: description,
+            status: status,
+            createdAt: createdAt,
+          ));
+        } catch (e) {
+          LoggerUtils.debug('Error parsing XLSX row [$r]: $e');
+        }
+      }
+
+      // Only read the first non-empty sheet.
+      if (tasks.isNotEmpty) break;
+    }
+
+    return tasks;
+  }
+
   static List<Task>? _parseByContent(String content) {
     final String t = content.trim();
     if (t.startsWith('[') || t.startsWith('{')) return _parseJSONContent(t);
@@ -392,4 +523,13 @@ class FileManagerService {
       return null;
     }
   }
+}
+
+/// Internal exception used to carry user-readable import error messages
+/// from [FileManagerService.importTasks] back to the controller.
+class _ImportException implements Exception {
+  _ImportException(this.message);
+  final String message;
+  @override
+  String toString() => message;
 }

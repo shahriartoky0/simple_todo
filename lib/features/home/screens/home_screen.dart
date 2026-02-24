@@ -181,7 +181,7 @@ class HomeScreen extends GetView<HomeController> {
     return CustomBottomSheet.show(
       context: context,
       title: forEdit ? AppStrings.editTheTask.tr : AppStrings.addNewTask.tr,
-      height: MediaQuery.of(context).size.height * 0.75,
+      height: MediaQuery.of(context).size.height * 0.85,
       // FIX: Request focus AFTER the sheet's open animation completes.
       // 100 ms was too short on most devices — the sheet wasn't in the tree yet.
       // 350 ms covers the standard bottom-sheet animation (300 ms) with a small buffer.
@@ -213,9 +213,11 @@ class HomeScreen extends GetView<HomeController> {
           const SizedBox(height: AppSizes.lg),
           TextFormField(
             controller: controller.taskTitle,
+            focusNode: descriptionFocus,
+
             textInputAction: TextInputAction.next,
             // Pressing "Next" on the title keyboard moves focus to description.
-            onFieldSubmitted: (_) => descriptionFocus.requestFocus(),
+
             decoration: InputDecoration(
               labelText: AppStrings.taskTitle.tr,
               hintText: AppStrings.enterTheTaskTitle.tr,
@@ -224,7 +226,6 @@ class HomeScreen extends GetView<HomeController> {
           const SizedBox(height: AppSizes.xl),
           TextFormField(
             controller: controller.taskDescription,
-            focusNode: descriptionFocus,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => onPressed(),
             decoration: InputDecoration(

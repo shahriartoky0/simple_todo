@@ -31,7 +31,13 @@ class HomeController extends GetxController {
   // ─── Add ───────────────────────────────────────────────────────────────────
 
   Future<void> addTask() async {
-    if (taskDescription.text.trim().isEmpty) {
+    if (taskTitle.text.trim().isEmpty) {
+      _showErrorToast(AppStrings.giveATitle.tr);
+      return;
+    }
+   else if (taskDescription.text
+        .trim()
+        .isEmpty) {
       _showErrorToast(AppStrings.giveADescription.tr);
       return;
     }
@@ -133,13 +139,13 @@ class HomeController extends GetxController {
 
   Future<void> importTasks() async {
     try {
-      Get.back();
+      Get.back(); // close the bottom sheet before opening file picker
+
       final List<Task>? imported = await FileManagerService.importTasks();
-      if (imported == null) return; // user cancelled the file picker
-      if (imported.isEmpty) {
-        _showErrorToast(AppStrings.noTasksToImport.tr);
-        return;
-      }
+
+      // null = user cancelled the file picker — do nothing silently
+      if (imported == null) return;
+
       for (final Task task in imported) {
         await TaskDatabase().addTask(task);
       }
@@ -149,7 +155,9 @@ class HomeController extends GetxController {
         CupertinoIcons.checkmark_circle,
       );
     } catch (e) {
-      _showErrorToast('Import failed: $e');
+      // _ImportException carries a user-readable message; any other exception
+      // falls back to a generic message. Both are shown as error toasts.
+      _showErrorToast(e.toString());
     }
   }
 

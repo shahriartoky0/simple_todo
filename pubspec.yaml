@@ -32,6 +32,8 @@ dependencies:
   file_picker:
   #for exporting to pdf
   pdf: ^3.10.8
+  #for importing from xlsx
+  excel: ^4.0.6
   printing: ^5.13.1
   #for fixing file txt issue
   file_saver: ^0.2.14
