@@ -1,48 +1,38 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
-import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:simple_todo/core/config/app_strings.dart';
 import 'package:simple_todo/core/data/local/collection/task.dart';
-import 'package:simple_todo/core/extensions/date_time_extensions.dart';
 import 'package:simple_todo/core/utils/logger_utils.dart';
 
 class FileManagerService {
-  // Export tasks to CSV file
+  // ─── CSV Export ────────────────────────────────────────────────────────────
+
+  /// Writes CSV to the system temp directory then opens the OS share sheet.
+  ///
+  /// Using [getTemporaryDirectory] + [Share.shareXFiles] means:
+  /// • The file has the correct .csv extension and text/csv MIME type.
+  /// • The OS share sheet opens immediately — user decides where it goes
+  ///   (Downloads, Drive, WhatsApp, email, etc.).
+  /// • Temp files are cleaned up by the OS automatically.
+  /// • No silent background save, no misleading toast needed.
   static Future<bool> exportTasksToCSV(List<Task> tasks) async {
     try {
-      // Get app-specific directory (no permissions needed)
-      final Directory directory = await getApplicationDocumentsDirectory();
+      final String fileName =
+          'To_Do_List_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final Directory dir = await getTemporaryDirectory();
+      final File file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(_buildCsvBytes(tasks));
 
-      // Create CSV content
-      // FIX: Store createdAt as millisecondsSinceEpoch (integer) so it can be
-      // reliably parsed back on import via int.tryParse().
-      String csvContent = 'ID,Title,Description,Status,CreatedAt\n';
-      for (final Task task in tasks) {
-        csvContent +=
-        '"${task.id}",'
-            '"${task.title.replaceAll('"', '""')}",'
-            '"${task.description.replaceAll('"', '""')}",'
-            '"${task.status.name}",'
-            '"${task.createdAt?.millisecondsSinceEpoch}"\n';
-      }
-
-      // Create file
-      final String fileName = 'To Do List_${DateTime.now().millisecondsSinceEpoch}.csv';
-      final File file = File('${directory.path}/$fileName');
-      await file.writeAsString(csvContent);
-
-      // Share the file
-      // FIX: Explicitly declare mimeType as 'text/csv' so the OS correctly
-      // identifies the file. Without this it defaults to 'text/plain' and
-      // saves the file with a .txt extension when stored to device storage.
       await Share.shareXFiles(
         <XFile>[XFile(file.path, mimeType: 'text/csv')],
-        text: AppStrings.myToDoList.tr,
+        text: AppStrings.myToDoList,
       );
-
       return true;
     } catch (e) {
       LoggerUtils.debug('Error exporting CSV: $e');
@@ -50,66 +40,225 @@ class FileManagerService {
     }
   }
 
-  // Unified import method for both CSV and JSON
+  // ─── PDF Export ────────────────────────────────────────────────────────────
+
+  /// Writes PDF to the system temp directory then opens the OS share sheet.
+  /// Identical flow to [exportTasksToCSV] — same share sheet, same UX.
+  static Future<bool> exportTasksToPDF(List<Task> tasks) async {
+    try {
+      final String fileName =
+          'To_Do_List_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final Directory dir = await getTemporaryDirectory();
+      final File file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(await _buildPdfBytes(tasks));
+
+      await Share.shareXFiles(
+        <XFile>[XFile(file.path, mimeType: 'application/pdf')],
+        text: AppStrings.myToDoList,
+      );
+      return true;
+    } catch (e) {
+      LoggerUtils.debug('Error exporting PDF: $e');
+      return false;
+    }
+  }
+
+  // ─── Import ────────────────────────────────────────────────────────────────
+
   static Future<List<Task>?> importTasks() async {
     try {
-      // Pick file with both CSV and JSON extensions
       final FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: <String>['csv', 'json'],
         dialogTitle: 'Select CSV or JSON file to import',
       );
 
-      if (result != null && result.files.single.path != null) {
-        final File file = File(result.files.single.path!);
-        final String contents = await file.readAsString();
-        final String fileName = result.files.single.name.toLowerCase();
+      if (result == null || result.files.single.path == null) return null;
 
-        // Determine file type and parse accordingly
-        if (fileName.endsWith('.csv')) {
-          LoggerUtils.debug('Importing CSV file: $fileName');
-          return _parseCSVContent(contents);
-        } else if (fileName.endsWith('.json')) {
-          LoggerUtils.debug('Importing JSON file: $fileName');
-          return _parseJSONContent(contents);
-        } else {
-          // Fallback: Try to detect content type by structure
-          return _parseByContent(contents);
-        }
+      final File file = File(result.files.single.path!);
+      if (!file.existsSync()) {
+        LoggerUtils.debug('Import file does not exist: ${file.path}');
+        return null;
       }
-      return null;
+
+      final String contents = await file.readAsString(encoding: utf8);
+      if (contents.trim().isEmpty) return <Task>[];
+
+      final String name = result.files.single.name.toLowerCase();
+      if (name.endsWith('.csv')) return _parseCSVContent(contents);
+      if (name.endsWith('.json')) return _parseJSONContent(contents);
+      return _parseByContent(contents);
     } catch (e) {
       LoggerUtils.debug('Error importing file: $e');
       return null;
     }
   }
 
-  // Fallback method to detect content type by analyzing structure
+  // ─── CSV builder ───────────────────────────────────────────────────────────
+
+  static Uint8List _buildCsvBytes(List<Task> tasks) {
+    final StringBuffer buffer =
+    StringBuffer('ID,Title,Description,Status,CreatedAt\n');
+    for (final Task task in tasks) {
+      final String createdAt =
+      (task.createdAt ?? DateTime.now()).toIso8601String();
+      buffer
+        ..write('"${task.id}",')
+        ..write('"${_escapeCsv(task.title)}",')
+        ..write('"${_escapeCsv(task.description)}",')
+        ..write('"${task.status.name}",')
+        ..write('"$createdAt"\n');
+    }
+    return Uint8List.fromList(utf8.encode(buffer.toString()));
+  }
+
+  // ─── PDF builder ───────────────────────────────────────────────────────────
+
+  static Future<Uint8List> _buildPdfBytes(List<Task> tasks) async {
+    final pw.Document pdf = pw.Document();
+
+    const Map<TaskStatus, PdfColor> statusColors = <TaskStatus, PdfColor>{
+      TaskStatus.completed: PdfColors.green700,
+      TaskStatus.pending: PdfColors.orange700,
+      TaskStatus.ready: PdfColors.blue700,
+    };
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (_) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: <pw.Widget>[
+            pw.Text(
+              AppStrings.myToDoList,
+              style: pw.TextStyle(
+                fontSize: 22,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.Text(
+              'Exported on ${_formatDate(DateTime.now())}',
+              style: const pw.TextStyle(
+                fontSize: 10,
+                color: PdfColors.grey600,
+              ),
+            ),
+            pw.Divider(thickness: 1.5),
+            pw.SizedBox(height: 4),
+          ],
+        ),
+        build: (_) => tasks
+            .asMap()
+            .entries
+            .map(
+              (MapEntry<int, Task> e) => _buildPdfTaskCard(
+            index: e.key + 1,
+            task: e.value,
+            statusColors: statusColors,
+          ),
+        )
+            .toList(),
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static pw.Widget _buildPdfTaskCard({
+    required int index,
+    required Task task,
+    required Map<TaskStatus, PdfColor> statusColors,
+  }) {
+    final PdfColor badgeColor = statusColors[task.status] ?? PdfColors.grey600;
+
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 12),
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: <pw.Widget>[
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: <pw.Widget>[
+              pw.Expanded(
+                child: pw.Text(
+                  '$index.  ${task.title}',
+                  style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: pw.BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: pw.BorderRadius.circular(12),
+                ),
+                child: pw.Text(
+                  task.status.name.toUpperCase(),
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: PdfColors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (task.description.isNotEmpty) ...<pw.Widget>[
+            pw.SizedBox(height: 6),
+            pw.Text(
+              task.description,
+              style: const pw.TextStyle(
+                fontSize: 11,
+                color: PdfColors.grey800,
+              ),
+            ),
+          ],
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'Created: ${_formatDate(task.createdAt ?? DateTime.now())}',
+            style: const pw.TextStyle(
+              fontSize: 9,
+              color: PdfColors.grey500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Private helpers ───────────────────────────────────────────────────────
+
+  static String _escapeCsv(String value) => value.replaceAll('"', '""');
+
+  static String _formatDate(DateTime dt) {
+    const List<String> months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final String day = dt.day.toString().padLeft(2, '0');
+    final String hour = dt.hour.toString().padLeft(2, '0');
+    final String min = dt.minute.toString().padLeft(2, '0');
+    return '${months[dt.month - 1]} $day, ${dt.year} – $hour:$min';
+  }
+
   static List<Task>? _parseByContent(String content) {
+    final String t = content.trim();
+    if (t.startsWith('[') || t.startsWith('{')) return _parseJSONContent(t);
+    if (t.contains(',') && t.contains('\n')) return _parseCSVContent(t);
     try {
-      final String trimmedContent = content.trim();
-
-      // Try JSON first (starts with [ or {)
-      if (trimmedContent.startsWith('[') || trimmedContent.startsWith('{')) {
-        LoggerUtils.debug('Content appears to be JSON, attempting JSON parse');
-        return _parseJSONContent(content);
-      }
-
-      if (trimmedContent.contains(',') && trimmedContent.contains('\n')) {
-        LoggerUtils.debug('Content appears to be CSV, attempting CSV parse');
-        return _parseCSVContent(content);
-      }
-
-      // If neither format is detected clearly, try JSON first then CSV
-      try {
-        return _parseJSONContent(content);
-      } catch (jsonError) {
-        LoggerUtils.debug('JSON parse failed, trying CSV: $jsonError');
-        return _parseCSVContent(content);
-      }
-    } catch (e) {
-      LoggerUtils.debug('Error in content type detection: $e');
-      return null;
+      return _parseJSONContent(t);
+    } catch (_) {
+      return _parseCSVContent(t);
     }
   }
 
@@ -117,111 +266,86 @@ class FileManagerService {
     final List<Task> tasks = <Task>[];
     final List<String> lines = csvContent.split('\n');
 
-    // Skip header row
     for (int i = 1; i < lines.length; i++) {
       final String line = lines[i].trim();
-      if (line.isEmpty) {
-        continue;
-      }
-
+      if (line.isEmpty) continue;
       try {
         final List<String> fields = _parseCSVRow(line);
-        if (fields.length >= 4) {
-          final TaskStatus status = TaskStatus.values.firstWhere(
-                (TaskStatus s) => s.name == fields[3],
-            orElse: () => TaskStatus.pending,
-          );
+        if (fields.length < 4) continue;
 
-          // FIX: Parse createdAt from millisecondsSinceEpoch integer string.
-          // fields[4] may not exist if the row has only 4 columns, so guard it.
-          DateTime createdAt = DateTime.now();
-          if (fields.length >= 5 && fields[4].isNotEmpty) {
-            final int? timestamp = int.tryParse(fields[4]);
-            if (timestamp != null) {
-              createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
-            }
-          }
+        final TaskStatus status = TaskStatus.values.firstWhere(
+              (TaskStatus s) => s.name == fields[3].trim(),
+          orElse: () => TaskStatus.pending,
+        );
 
-          tasks.add(
-            Task(
-              title: fields[1],
-              description: fields[2],
-              status: status,
-              createdAt: createdAt,
-            ),
-          );
+        DateTime createdAt = DateTime.now();
+        if (fields.length >= 5 && fields[4].trim().isNotEmpty) {
+          final String raw = fields[4].trim();
+          final int? epoch = int.tryParse(raw);
+          createdAt = epoch != null
+              ? DateTime.fromMillisecondsSinceEpoch(epoch)
+              : (DateTime.tryParse(raw) ?? DateTime.now());
         }
+
+        tasks.add(Task(
+          title: fields[1],
+          description: fields[2],
+          status: status,
+          createdAt: createdAt,
+        ));
       } catch (e) {
-        LoggerUtils.debug('Error parsing CSV row: $line, Error: $e');
+        LoggerUtils.debug('Error parsing CSV row [$i]: $e');
       }
     }
-
     return tasks;
   }
 
   static List<String> _parseCSVRow(String row) {
     final List<String> fields = <String>[];
     bool inQuotes = false;
-    String currentField = '';
+    final StringBuffer current = StringBuffer();
 
     for (int i = 0; i < row.length; i++) {
-      final String char = row[i];
-
-      if (char == '"') {
-        if (i + 1 < row.length && row[i + 1] == '"') {
-          // Escaped quote
-          currentField += '"';
-          i++; // Skip next quote
+      final String ch = row[i];
+      if (ch == '"') {
+        if (inQuotes && i + 1 < row.length && row[i + 1] == '"') {
+          current.write('"');
+          i++;
         } else {
-          // Toggle quote state
           inQuotes = !inQuotes;
         }
-      } else if (char == ',' && !inQuotes) {
-        // Field separator
-        fields.add(currentField);
-        currentField = '';
+      } else if (ch == ',' && !inQuotes) {
+        fields.add(current.toString());
+        current.clear();
       } else {
-        currentField += char;
+        current.write(ch);
       }
     }
-
-    // Add last field
-    fields.add(currentField);
+    fields.add(current.toString());
     return fields;
   }
 
   static List<Task> _parseJSONContent(String jsonContent) {
     try {
-      final dynamic jsonData = json.decode(jsonContent);
+      final dynamic data = json.decode(jsonContent);
       final List<Task> tasks = <Task>[];
 
-      if (jsonData is List) {
-        // Array of tasks
-        for (final dynamic taskData in jsonData) {
-          final Task? task = _createTaskFromJson(taskData);
-          if (task != null) {
-            tasks.add(task);
-          }
+      if (data is List) {
+        for (final dynamic item in data) {
+          final Task? t = _createTaskFromJson(item);
+          if (t != null) tasks.add(t);
         }
-      } else if (jsonData is Map<String, dynamic>) {
-        // Single task or object with tasks array
-        if (jsonData.containsKey('tasks') && jsonData['tasks'] is List) {
-          // Object with tasks array
-          for (final dynamic taskData in jsonData['tasks']) {
-            final Task? task = _createTaskFromJson(taskData);
-            if (task != null) {
-              tasks.add(task);
-            }
+      } else if (data is Map<String, dynamic>) {
+        if (data['tasks'] is List) {
+          for (final dynamic item in data['tasks'] as List<dynamic>) {
+            final Task? t = _createTaskFromJson(item);
+            if (t != null) tasks.add(t);
           }
         } else {
-          // Single task object
-          final Task? task = _createTaskFromJson(jsonData);
-          if (task != null) {
-            tasks.add(task);
-          }
+          final Task? t = _createTaskFromJson(data);
+          if (t != null) tasks.add(t);
         }
       }
-
       return tasks;
     } catch (e) {
       LoggerUtils.debug('Error parsing JSON: $e');
@@ -229,51 +353,40 @@ class FileManagerService {
     }
   }
 
-  static Task? _createTaskFromJson(dynamic taskData) {
+  static Task? _createTaskFromJson(dynamic data) {
     try {
-      if (taskData is! Map<String, dynamic>) {
-        return null;
-      }
+      if (data is! Map<String, dynamic>) return null;
+      final String title = data['title']?.toString() ?? '';
+      if (title.isEmpty) return null;
 
-      final String title = taskData['title']?.toString() ?? '';
-      final String description = taskData['description']?.toString() ?? '';
+      final String description = data['description']?.toString() ?? '';
 
-      if (title.isEmpty) {
-        return null;
-      }
-
-      // Parse status
       TaskStatus status = TaskStatus.pending;
-      if (taskData['status'] != null) {
-        final String statusStr = taskData['status'].toString().toLowerCase();
+      if (data['status'] != null) {
+        final String s = data['status'].toString().toLowerCase();
         status = TaskStatus.values.firstWhere(
-              (TaskStatus s) => s.name.toLowerCase() == statusStr,
+              (TaskStatus e) => e.name.toLowerCase() == s,
           orElse: () => TaskStatus.pending,
         );
       }
 
-      // Parse created date - handle multiple formats
       DateTime createdAt = DateTime.now();
-
-      if (taskData['createdAt'] != null) {
-        if (taskData['createdAt'] is int) {
-          createdAt = DateTime.fromMillisecondsSinceEpoch(taskData['createdAt']);
-        } else if (taskData['createdAt'] is String) {
-          final String dateStr = taskData['createdAt'];
-          // Try parsing as integer string (millisecondsSinceEpoch) first
-          final int? timestamp = int.tryParse(dateStr);
-          if (timestamp != null) {
-            createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
-          } else {
-            final DateTime? parsedDate = DateTime.tryParse(dateStr);
-            if (parsedDate != null) {
-              createdAt = parsedDate;
-            }
-          }
-        }
+      final dynamic rawDate = data['createdAt'];
+      if (rawDate is int) {
+        createdAt = DateTime.fromMillisecondsSinceEpoch(rawDate);
+      } else if (rawDate is String && rawDate.isNotEmpty) {
+        final int? epoch = int.tryParse(rawDate);
+        createdAt = epoch != null
+            ? DateTime.fromMillisecondsSinceEpoch(epoch)
+            : (DateTime.tryParse(rawDate) ?? DateTime.now());
       }
 
-      return Task(title: title, description: description, status: status, createdAt: createdAt);
+      return Task(
+        title: title,
+        description: description,
+        status: status,
+        createdAt: createdAt,
+      );
     } catch (e) {
       LoggerUtils.debug('Error creating task from JSON: $e');
       return null;

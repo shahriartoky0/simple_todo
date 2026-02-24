@@ -30,6 +30,11 @@ dependencies:
   #for file uploading
   image_picker:
   file_picker:
+  #for exporting to pdf
+  pdf: ^3.10.8
+  printing: ^5.13.1
+  #for fixing file txt issue
+  file_saver: ^0.2.14
   #for icon :
   flutter_launcher_icons: ^0.14.4
   lottie:
